@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <sys/shm.h>
 #include <string.h>
 #include <unistd.h>
 #include "shell.h"
@@ -92,20 +93,30 @@ void decress_count(pipe_node **pipe_front, pipe_node **pipe_rear)
 	}
 }
 
-pipe_node *search_pipe(int from, int to)
+pipe_node *get_global_pipe()
 {
-	extern pipe_node *pipe_client_front;
-	extern pipe_node *pipe_client_rear;
+	int shmid = shmget((key_t)PIPE_KEY, sizeof(pipe_node) * 50, IPC_CREAT | 0600);
+	pipe_node *global_pipe_list = shmat(shmid, NULL, 0);
+	return global_pipe_list;
+}
 
-	pipe_node *temp = pipe_client_front;
-	while (temp != NULL)
+
+int search_pipe(int from, int to)
+{
+	pipe_node *temp = get_global_pipe();
+	int ret = 0;
+
+	for (int c = 0; c < 50; c++)
 	{
-		if (temp->from == from && temp->to == to)
+		if (temp[c].from == from && temp[c].to == to)
+		{
+			ret = 1;
 			break;
-		temp = temp->next;
+		}
 	}
 
-	return temp;
+	shmdt(temp);
+	return ret;
 }
 
 void put_pipe(pipe_node *node)

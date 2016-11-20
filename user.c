@@ -1,24 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <sys/shm.h>
 #include <string.h>
 #include <unistd.h>
 #include "user.h"
 
-void push_user(user_node **front, user_node **rear, user_node *node)
+user_node *get_user_list()
 {
-	if (*front == NULL)
-	{
-		*rear = NULL;
-		*front = *rear = node;
-	}
+	int shmid = shmget((key_t)USER_KEY, sizeof(user_node) * 31, 0666);
+	user_node *ret = (user_node*) shmat(shmid, NULL, 0);
+	return ret;
+}
 
-	else
-	{
-		user_node *temp = *rear;
-		temp->next = node;
-		*rear = node;
-	}
+void push_user(user_node *node)
+{
+	user_node *user_list = get_user_list();
+
+	user_list[node->ID] = *node;
+	shmdt(user_list);
 }
 
 void remove_user(user_node *node)
@@ -33,69 +33,23 @@ void remove_user(user_node *node)
 	node->next = NULL;
 }
 
-void unlink_user(user_node **front, user_node **rear, user_node *node)
+void unlink_user(user_node *node)
 {
-	if (*front == node && *rear == node)
-	{
-		*front = NULL;
-		*rear = NULL;
-	}
+	user_node *user_list = get_user_list();
 
-	user_node *pre = NULL;
-	user_node *cur = *front;
+	user_list[node->ID].ID = -1;
 
-	while(cur != NULL)
-	{
-
-		printf("cur:0x%x\n", cur);
-		printf("cur->next:0x%x\n", cur->next);
-		printf("pre:0x%x\n", pre);
-		printf("node:0x%x\n", node);
-		
-		if (cur == node)
-		{
-			if (pre == NULL)
-			{
-				//first node
-				*front = node->next;
-			}
-
-			else
-			{
-				if (*rear == node)
-				{
-					//last node
-					pre->next = NULL;
-					*rear = pre;
-				}
-				
-				else
-				{
-					pre->next = cur->next;
-				}
-			}
-
-			cur = NULL;
-		}
-
-		else
-		{
-			pre = cur;
-			cur = cur->next;
-		}
-	}
+	
+	shmdt(user_list);
 }
 
-void broadcast_message(user_node *front, const char *m)
+void broadcast_message(const char *m)
 {
-	user_node *bro_node = front;
+	user_node *user_list = get_user_list();
+
 	
-	while (bro_node != NULL)
-	{
-		write(bro_node->user_fd, m, strlen(m));
-		write(bro_node->user_fd, "\n% ", 3);
-		bro_node = bro_node->next;
-	}
+
+	shmdt(user_list);
 }
 
 user_node *search_name(user_node *front, int id)

@@ -1,5 +1,6 @@
 #ifndef __USER__
 #define __USER__
+#define USER_KEY 6666
 #include "command.h"
 #include "pipe.h"
 
@@ -26,9 +27,10 @@ struct _user
 
 typedef struct _user user_node;
 
-void push_user(user_node **front, user_node **rear, user_node *node);
+user_node *get_user_list();
+void push_user(user_node *node);
 void remove_user(user_node *node);
-void unlink_user(user_node **front, user_node **rear, user_node *node);
+void unlink_user(user_node *node);
 void broadcast_message(user_node *front, const char *m);
 user_node *search_name(user_node *front, int id);
 

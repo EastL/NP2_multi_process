@@ -1,5 +1,6 @@
 #ifndef __PIPE__
 #define __PIPE__
+#define PIPE_KEY 7777
 
 struct __pipe
 {
@@ -18,7 +19,8 @@ void push_pipe(pipe_node **pipe_front, pipe_node **pipe_rear, pipe_node **node);
 pipe_node *check(pipe_node **pipe_front, int count);
 void free_pipe(pipe_node *node);
 void decress_count(pipe_node **pipe_front, pipe_node **pipe_rear);
-pipe_node *search_pipe(int from, int to);
+pipe_node *get_global_pipe();
+int search_pipe(int from, int to);
 void put_pipe(pipe_node *node);
 void delete_pipe(pipe_node *node);
 #endif

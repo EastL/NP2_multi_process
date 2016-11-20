@@ -24,330 +24,343 @@ pipe_node *pipe_client_rear = NULL;
 
 int shell(user_node *client_fd)
 {
+	char *welcome = "****************************************\n** Welcome to the information server. **\n****************************************\n";
 	char *shellsign = "% ";
-	char *line = NULL;
 	ssize_t bufsize = 0;
 	cmd_node *cmd_list;
+
+	//welcome msg
+	write(client_fd->user_fd, welcome, strlen(welcome));
+	printf("welcome\n");
+			
+
+	//broadcast
+	char *bro_msg = malloc(sizeof(char) * 80);
+	memset(bro_msg, 0, 80);
+
+	sprintf(bro_msg, "*** User '(no name)' entered from %s/%d. ***", client_fd->ip, client_fd->port);
+	//broadcast_message(user_list_front, bro_msg);
 
 	//set env
 	for (int c = 0; c < client_fd->env_num; c++)
 		setenv(client_fd->env[c], client_fd->envval[c], 1);
 
-	line = malloc(sizeof(char) * 10010);
-
-
-	//read and parsing line
-	parse(client_fd);
-	print_cmd(&(client_fd->user_cmd_front));
-
-	//execute process
-	cmd_node *current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-
-	int next_pipe_num = 0;
-	int sign = 1;
-
-	while (current_cmd != NULL)
+	while(1)
 	{
-		if (strncmp(current_cmd->cmd, "setenv", 6) == 0)
-		{
-			if (current_cmd->arg[1] == NULL || current_cmd->arg[2] == NULL)
-			{
-				char *ts = "Please give args.\n";
-				write(client_fd->user_fd, ts, strlen(ts));
-				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-				continue;
-			}
+		//read and parsing line
+		parse(client_fd);
+		print_cmd(&(client_fd->user_cmd_front));
 
-			//write to user info
-			int cmp = 0;
-			for (int c = 0; c < client_fd->env_num; c++)
+		//execute process
+		cmd_node *current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+
+		int next_pipe_num = 0;
+		int sign = 1;
+
+		while (current_cmd != NULL)
+		{
+			if (strncmp(current_cmd->cmd, "setenv", 6) == 0)
 			{
-				if (strcmp(client_fd->env[c], current_cmd->arg[1]) == 0)
+				if (current_cmd->arg[1] == NULL || current_cmd->arg[2] == NULL)
 				{
-					cmp = 1;
-					strcpy(client_fd->envval[c], current_cmd->arg[2]);
+					char *ts = "Please give args.\n";
+					write(client_fd->user_fd, ts, strlen(ts));
+					decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+					continue;
 				}
-			}
 
-			if (!cmp)
-			{
-				strcpy(client_fd->env[client_fd->env_num], current_cmd->arg[1]);
-				strcpy(client_fd->envval[client_fd->env_num], current_cmd->arg[2]);
-				client_fd->env_num++;
-			}
-
-			//real set
-			setenv(current_cmd->arg[1], current_cmd->arg[2], 1);
-			free_cmd(current_cmd);
-
-			//last command, decress
-			decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-
-			current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-		}
-
-		else if (strncmp(current_cmd->cmd, "who", 3) == 0)
-		{
-			char *title = "<ID>\t<nickname>\t<IP/port>\t<indicate me>\n";
-			write(client_fd->user_fd, title, strlen(title));
-
-			user_node *temp_who = user_list_front;
-			while (temp_who != NULL)
-			{
-				char *content = malloc(sizeof(char) * 100);
-				memset(content, 0, 100);
-				if (temp_who == client_fd)
-					sprintf(content, "%d\t%s\t%s/%d\t%s\n", temp_who->ID, temp_who->name, temp_who->ip, temp_who->port, "<- me");
-				else
-					sprintf(content, "%d\t%s\t%s/%d\n", temp_who->ID, temp_who->name, temp_who->ip, temp_who->port);
-					
-				write(client_fd->user_fd, content, strlen(content));
-				temp_who = temp_who->next;
-				free(content);
-			}
-			
-			decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-
-			current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-		}
-
-		else if (strncmp(current_cmd->cmd, "name", 4) == 0)
-		{
-			if (current_cmd->arg[1] == NULL)
-			{
-				char *ts = "Please give args.\n";
-				write(client_fd->user_fd, ts, strlen(ts));
-				fflush(stdout);
-				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-				continue;
-			}
-
-			int check_name = 0;
-			user_node *search_name = user_list_front;
-			while (search_name != NULL)
-			{
-				if (strcmp(search_name->name, current_cmd->arg[1]) == 0)
+				//write to user info
+				int cmp = 0;
+				for (int c = 0; c < client_fd->env_num; c++)
 				{
-					check_name = 1;
-					break;
+					if (strcmp(client_fd->env[c], current_cmd->arg[1]) == 0)
+					{
+						cmp = 1;
+						strcpy(client_fd->envval[c], current_cmd->arg[2]);
+					}
 				}
-				search_name = search_name->next;
-			}
 
-			if (check_name)
-			{
-				char *name_repeat = malloc(sizeof(char) * 80);
-				memset(name_repeat, 0, 80);
+				if (!cmp)
+				{
+					strcpy(client_fd->env[client_fd->env_num], current_cmd->arg[1]);
+					strcpy(client_fd->envval[client_fd->env_num], current_cmd->arg[2]);
+					client_fd->env_num++;
+				}
 
-				sprintf(name_repeat, "*** User '%s' already exists. ***\n", current_cmd->arg[1]);
-				write(client_fd->user_fd, name_repeat, strlen(name_repeat));
-				free(name_repeat);
-				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-
-				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-				continue;
-			}
-
-			client_fd->name = malloc(strlen(current_cmd->arg[1]) + 1);
-			memset(client_fd->name, 0, (strlen(current_cmd->arg[1]) + 1));
-			strcpy(client_fd->name, current_cmd->arg[1]);
-
-			char *bro_name = malloc(sizeof(char) * 100);
-			memset(bro_name, 0, 100);
-
-			sprintf(bro_name, "*** User from %s/%d is named '%s'. ***", client_fd->ip, client_fd->port, client_fd->name);
-			broadcast_message(user_list_front, bro_name);
-			sign = 0;
-			free(bro_name);
-			bro_name = NULL;
-			
-			decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-
-			current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-		}
-
-		else if (strncmp(current_cmd->cmd, "tell", 4) == 0)
-		{
-			if (current_cmd->arg[1] == NULL || current_cmd->arg[2] == NULL)
-			{
-				char *ts = "Please give args.\n";
-				write(client_fd->user_fd, ts, strlen(ts));
-				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-				continue;
-			}
-
-			int sock_fd = atoi(current_cmd->arg[1]);
-			char *tell_msg = malloc(sizeof(char) * 1024);
-			memset(tell_msg, 0, 1024);
-
-			sprintf(tell_msg, "*** (%s) told you ***: %s\n", client_fd->name, current_cmd->arg[2]);
-
-			if (write(sock_fd, tell_msg, strlen(tell_msg)) < 0)
-			{
-				char *tell_err = malloc(sizeof(char) * 100);
-				memset(tell_err, 0, 100);
-				sprintf(tell_err, "*** Error: user #(%d) does not exist yet. ***\n", sock_fd);
-
-				write(client_fd->user_fd, tell_err, strlen(tell_err));
-				free(tell_err);
-			}
-
-			free(tell_msg);
-			decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-
-			current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-		}
-
-		else if (strncmp(current_cmd->cmd, "yell", 4) == 0)
-		{
-			if (current_cmd->arg[1] == NULL)
-			{
-				char *ts = "Please give args.\n";
-				write(client_fd->user_fd, ts, strlen(ts));
-				fflush(stdout);
-				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-				continue;
-			}
-
-			char *yell_msg = malloc(sizeof(char) * 1024);
-			memset(yell_msg, 0, 1024);
-
-			sprintf(yell_msg, "*** %s yelled ***: %s", client_fd->name, current_cmd->arg[1]);
-			broadcast_message(user_list_front, yell_msg);
-			free(yell_msg);
-			sign = 0;
-			decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-
-			current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-		}
-
-		else if (strncmp(current_cmd->cmd, "printenv", 8) == 0)
-		{
-			if (current_cmd->arg[1] == NULL)
-			{
-				char *ts = "Please give args.\n";
-				write(client_fd->user_fd, ts, strlen(ts));
-				fflush(stdout);
-				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-				continue;
-			}
-
-			//char *env_name = malloc(strlen(current_cmd->arg[1]) - 1);
-			//strncpy(env_name, current_cmd->arg[1], (strlen(current_cmd->arg[1]) - 1));
-			char *env_val = getenv(current_cmd->arg[1]);//sooooock
-			char *ret = malloc(strlen(env_val) + strlen(current_cmd->arg[1]) + 4);
-			sprintf(ret, "%s=%s\n", current_cmd->arg[1], env_val);
-			
-			write(client_fd->user_fd, ret, strlen(ret));
-			free_cmd(current_cmd);
-
-			//last command, decress
-			decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-
-			current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-		}
-
-		else if (strncmp(current_cmd->cmd, "removeenv", 9) == 0)
-		{
-			if (current_cmd->arg[1] == NULL)
-			{
-				char *ts = "Please give args.\n";
-				write(client_fd->user_fd, ts, strlen(ts));
-				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-				continue;
-			}
-
-			setenv(current_cmd->arg[1], "", 1);
-			free_cmd(current_cmd);
-
-			//last command, decress
-			decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-
-			current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-		}
-		
-		else if (strncmp(current_cmd->cmd, "exit", 4) == 0)
-		{
-			return -1;
-		}
-
-		else
-		{
-			char *envpath = getenv("PATH");
-			if (check_cmd_exist(current_cmd->cmd, envpath) == -1)
-			{
-				char *unkown = "Unknown command: [";
-				char *untail = "].\n";
-				write(client_fd->user_fd, unkown, strlen(unkown));
-				write(client_fd->user_fd, current_cmd->cmd, strlen(current_cmd->cmd));
-				write(client_fd->user_fd, untail, strlen(untail));
+				//real set
+				setenv(current_cmd->arg[1], current_cmd->arg[2], 1);
+				free_cmd(current_cmd);
 
 				//last command, decress
 				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
 
-				free_cmd(current_cmd);
-				free_cmd_line(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
 				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
-				continue;
-			}	
+			}
+
+			else if (strncmp(current_cmd->cmd, "who", 3) == 0)
+			{
+				char *title = "<ID>\t<nickname>\t<IP/port>\t<indicate me>\n";
+				write(client_fd->user_fd, title, strlen(title));
+
+				user_node *temp_who = user_list_front;
+				while (temp_who != NULL)
+				{
+					char *content = malloc(sizeof(char) * 100);
+					memset(content, 0, 100);
+					if (temp_who == client_fd)
+						sprintf(content, "%d\t%s\t%s/%d\t%s\n", temp_who->ID, temp_who->name, temp_who->ip, temp_who->port, "<- me");
+					else
+						sprintf(content, "%d\t%s\t%s/%d\n", temp_who->ID, temp_who->name, temp_who->ip, temp_who->port);
+						
+					write(client_fd->user_fd, content, strlen(content));
+					temp_who = temp_who->next;
+					free(content);
+				}
+				
+				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+
+				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+			}
+
+			else if (strncmp(current_cmd->cmd, "name", 4) == 0)
+			{
+				if (current_cmd->arg[1] == NULL)
+				{
+					char *ts = "Please give args.\n";
+					write(client_fd->user_fd, ts, strlen(ts));
+					fflush(stdout);
+					decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+					continue;
+				}
+
+				int check_name = 0;
+				user_node *search_name = user_list_front;
+				while (search_name != NULL)
+				{
+					if (strcmp(search_name->name, current_cmd->arg[1]) == 0)
+					{
+						check_name = 1;
+						break;
+					}
+					search_name = search_name->next;
+				}
+
+				if (check_name)
+				{
+					char *name_repeat = malloc(sizeof(char) * 80);
+					memset(name_repeat, 0, 80);
+
+					sprintf(name_repeat, "*** User '%s' already exists. ***\n", current_cmd->arg[1]);
+					write(client_fd->user_fd, name_repeat, strlen(name_repeat));
+					free(name_repeat);
+					decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+
+					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+					continue;
+				}
+
+				client_fd->name = malloc(strlen(current_cmd->arg[1]) + 1);
+				memset(client_fd->name, 0, (strlen(current_cmd->arg[1]) + 1));
+				strcpy(client_fd->name, current_cmd->arg[1]);
+
+				char *bro_name = malloc(sizeof(char) * 100);
+				memset(bro_name, 0, 100);
+
+				sprintf(bro_name, "*** User from %s/%d is named '%s'. ***", client_fd->ip, client_fd->port, client_fd->name);
+				broadcast_message(user_list_front, bro_name);
+				sign = 0;
+				free(bro_name);
+				bro_name = NULL;
+				
+				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+
+				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+			}
+
+			else if (strncmp(current_cmd->cmd, "tell", 4) == 0)
+			{
+				if (current_cmd->arg[1] == NULL || current_cmd->arg[2] == NULL)
+				{
+					char *ts = "Please give args.\n";
+					write(client_fd->user_fd, ts, strlen(ts));
+					decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+					continue;
+				}
+
+				int sock_fd = atoi(current_cmd->arg[1]);
+				char *tell_msg = malloc(sizeof(char) * 1024);
+				memset(tell_msg, 0, 1024);
+
+				sprintf(tell_msg, "*** (%s) told you ***: %s\n", client_fd->name, current_cmd->arg[2]);
+
+				if (write(sock_fd, tell_msg, strlen(tell_msg)) < 0)
+				{
+					char *tell_err = malloc(sizeof(char) * 100);
+					memset(tell_err, 0, 100);
+					sprintf(tell_err, "*** Error: user #(%d) does not exist yet. ***\n", sock_fd);
+
+					write(client_fd->user_fd, tell_err, strlen(tell_err));
+					free(tell_err);
+				}
+
+				free(tell_msg);
+				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+
+				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+			}
+
+			else if (strncmp(current_cmd->cmd, "yell", 4) == 0)
+			{
+				if (current_cmd->arg[1] == NULL)
+				{
+					char *ts = "Please give args.\n";
+					write(client_fd->user_fd, ts, strlen(ts));
+					fflush(stdout);
+					decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+					continue;
+				}
+
+				char *yell_msg = malloc(sizeof(char) * 1024);
+				memset(yell_msg, 0, 1024);
+
+				sprintf(yell_msg, "*** %s yelled ***: %s", client_fd->name, current_cmd->arg[1]);
+				broadcast_message(user_list_front, yell_msg);
+				free(yell_msg);
+				sign = 0;
+				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+
+				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+			}
+
+			else if (strncmp(current_cmd->cmd, "printenv", 8) == 0)
+			{
+				if (current_cmd->arg[1] == NULL)
+				{
+					char *ts = "Please give args.\n";
+					write(client_fd->user_fd, ts, strlen(ts));
+					fflush(stdout);
+					decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+					continue;
+				}
+
+				//char *env_name = malloc(strlen(current_cmd->arg[1]) - 1);
+				//strncpy(env_name, current_cmd->arg[1], (strlen(current_cmd->arg[1]) - 1));
+				char *env_val = getenv(current_cmd->arg[1]);//sooooock
+				char *ret = malloc(strlen(env_val) + strlen(current_cmd->arg[1]) + 4);
+				sprintf(ret, "%s=%s\n", current_cmd->arg[1], env_val);
+				
+				write(client_fd->user_fd, ret, strlen(ret));
+				free_cmd(current_cmd);
+
+				//last command, decress
+				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+
+				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+			}
+
+			else if (strncmp(current_cmd->cmd, "removeenv", 9) == 0)
+			{
+				if (current_cmd->arg[1] == NULL)
+				{
+					char *ts = "Please give args.\n";
+					write(client_fd->user_fd, ts, strlen(ts));
+					decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+					continue;
+				}
+
+				setenv(current_cmd->arg[1], "", 1);
+				free_cmd(current_cmd);
+
+				//last command, decress
+				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+
+				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+			}
+			
+			else if (strncmp(current_cmd->cmd, "exit", 4) == 0)
+			{
+				return -1;
+			}
 
 			else
 			{
-				int exe_ret;
-				exe_ret = execute_node(current_cmd, client_fd, &next_pipe_num);
-
-				if (exe_ret != 0)
+				char *envpath = getenv("PATH");
+				if (check_cmd_exist(current_cmd->cmd, envpath) == -1)
 				{
-					char *search_pip = malloc(sizeof(char) * 100);
-					memset(search_pip, 0, 100);
+					char *unkown = "Unknown command: [";
+					char *untail = "].\n";
+					write(client_fd->user_fd, unkown, strlen(unkown));
+					write(client_fd->user_fd, current_cmd->cmd, strlen(current_cmd->cmd));
+					write(client_fd->user_fd, untail, strlen(untail));
 
-					if (exe_ret == -1)
-					{
-						sprintf(search_pip, "*** Error: the pipe #%d->#%d does not exist yet. ***\n", current_cmd->pip_process_count_in, client_fd->ID);
-						write(client_fd->user_fd, search_pip, strlen(search_pip));
-						decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-					}
+					//last command, decress
+					decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
 
-					else if (exe_ret == -2)
-					{
-						sprintf(search_pip, "*** Error: the pipe #%d->#%d already exist. ***\n", client_fd->ID, current_cmd->pip_process_count_out);
-						write(client_fd->user_fd, search_pip, strlen(search_pip));
-						decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
-					}
+					free_cmd(current_cmd);
+					free_cmd_line(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
+					continue;
+				}	
 
-					else if (exe_ret == 2)
-					{
-						user_node *target = search_name(user_list_front, current_cmd->pip_process_count_out);
-						sprintf(search_pip, "*** %s (#%d) just piped cmd to %s (#%d) ***", client_fd->name, client_fd->ID, target->name, current_cmd->pip_process_count_out);
-						broadcast_message(user_list_front, search_pip);
-						sign = 0;
-					}
+				else
+				{
+					int exe_ret;
+					exe_ret = execute_node(current_cmd, client_fd, &next_pipe_num);
 
-					else if (exe_ret == 1)
+					if (exe_ret != 0)
 					{
-						user_node *target = search_name(user_list_front, current_cmd->pip_process_count_in);
-						sprintf(search_pip, "*** %s (#%d) just received from %s (#%d) by cmd ***", client_fd->name, client_fd->ID, target->name, current_cmd->pip_process_count_in);
-						broadcast_message(user_list_front, search_pip);
-						sign = 0;
+						char *search_pip = malloc(sizeof(char) * 100);
+						memset(search_pip, 0, 100);
+
+						if (exe_ret == -1)
+						{
+							sprintf(search_pip, "*** Error: the pipe #%d->#%d does not exist yet. ***\n", current_cmd->pip_process_count_in, client_fd->ID);
+							write(client_fd->user_fd, search_pip, strlen(search_pip));
+							decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+						}
+
+						else if (exe_ret == -2)
+						{
+							sprintf(search_pip, "*** Error: the pipe #%d->#%d already exist. ***\n", client_fd->ID, current_cmd->pip_process_count_out);
+							write(client_fd->user_fd, search_pip, strlen(search_pip));
+							decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+						}
+
+						else if (exe_ret == 2)
+						{
+							user_node *target = search_name(user_list_front, current_cmd->pip_process_count_out);
+							sprintf(search_pip, "*** %s (#%d) just piped cmd to %s (#%d) ***", client_fd->name, client_fd->ID, target->name, current_cmd->pip_process_count_out);
+							broadcast_message(user_list_front, search_pip);
+							sign = 0;
+						}
+
+						else if (exe_ret == 1)
+						{
+							user_node *target = search_name(user_list_front, current_cmd->pip_process_count_in);
+							sprintf(search_pip, "*** %s (#%d) just received from %s (#%d) by cmd ***", client_fd->name, client_fd->ID, target->name, current_cmd->pip_process_count_in);
+							broadcast_message(user_list_front, search_pip);
+							sign = 0;
+						}
+						
+						free(search_pip);
 					}
 					
-					free(search_pip);
+					free_cmd(current_cmd);
+					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
 				}
-				
-				free_cmd(current_cmd);
-				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
 			}
 		}
+
+		if (sign)
+			write(client_fd->user_fd, shellsign, strlen(shellsign));
 	}
 
-	if (sign)
-		write(client_fd->user_fd, shellsign, strlen(shellsign));
 	return 0;
 }
 
