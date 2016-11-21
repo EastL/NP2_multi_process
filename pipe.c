@@ -101,16 +101,16 @@ pipe_node *get_global_pipe()
 }
 
 
-int search_pipe(int from, int to)
+pipe_node *search_pipe(int from, int to)
 {
 	pipe_node *temp = get_global_pipe();
-	int ret = 0;
+	pipe_node *ret = malloc(sizeof(pipe_node));
 
 	for (int c = 0; c < 50; c++)
 	{
-		if (temp[c].from == from && temp[c].to == to)
+		if (temp[c].from == from && temp[c].to == to && temp[c].ID != -1)
 		{
-			ret = 1;
+			*ret = temp[c];
 			break;
 		}
 	}
@@ -121,54 +121,30 @@ int search_pipe(int from, int to)
 
 void put_pipe(pipe_node *node)
 {
-	extern pipe_node *pipe_client_front;
-	extern pipe_node *pipe_client_rear;
+	pipe_node *temp = get_global_pipe();
 
-	if (pipe_client_front == NULL)
+	for (int i = 0; i < 50; i++)
 	{
-		pipe_client_front = pipe_client_rear = node;
+		if (temp[i].ID == -1)
+		{
+			node->ID = i;
+			temp[i] = *node;
+			break;
+		}
 	}
-
-	else
-	{
-		pipe_client_rear->next = node;
-		pipe_client_rear = node;
-	}
-	
+	shmdt(temp);
 }
 
 void delete_pipe(pipe_node *node)
 {
-	extern pipe_node *pipe_client_front;
-	extern pipe_node *pipe_client_rear;
-	pipe_node *temp = pipe_client_front;
-	pipe_node *pre = NULL;
-
-	while (temp != NULL)
-	{
-		if (temp == node)
-		{
-			if (pre == NULL)
-			{
-				pipe_client_front = temp->next;
-				if (pipe_client_front == NULL)
-					pipe_client_rear = NULL;
-			}
-
-			else
-			{
-				pre->next = temp->next;
-				if (temp == pipe_client_rear)
-					pipe_client_rear = pre;
-			}
-
-			break;
-		}
-
-		else
-		{	
-			pre = temp;
-			temp = temp->next;
-		}
-	}
+	pipe_node *temp = get_global_pipe();
+	temp[node->ID].ID = -1;
+	temp[node->ID].num = 0;
+	temp[node->ID].from = 0;
+	temp[node->ID].to = 0;
+	temp[node->ID].infd = 0;
+	temp[node->ID].outfd = 0;
+	temp[node->ID].is_err = 0;
+	
+	shmdt(temp);
 }

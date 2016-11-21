@@ -8,10 +8,10 @@ struct _user
 {
 	int ID;
 	int pid;
-	char *name;
+	char name[30];
 	int user_fd;
-	char env[256][1024];
-	char envval[256][1024];
+	char env[128][1024];
+	char envval[128][1024];
 	int env_num;
 	int coda;
 
@@ -36,6 +36,12 @@ void push_user(user_node *node);
 void remove_user(user_node *node);
 void unlink_user(user_node *node);
 void broadcast_message(user_node *node, const char *m);
-user_node *search_name(user_node *front, int id);
+char *get_name(int id);
+int is_name_exist(char *name);
+void who(user_node *node);
+void name(user_node *node, char *n);
+void yell(user_node *node, char *msg);
+void user_exit_broadcast(user_node *node);
+int tell(user_node *node, int to, char *msg);
 
 #endif

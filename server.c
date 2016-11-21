@@ -78,6 +78,17 @@ void init_user_info()
 		user_list[c].ID = -1;
 }
 
+void init_global_pipe()
+{
+	int shmid = shmget((key_t)PIPE_KEY, sizeof(user_node) * 50, IPC_CREAT | 0600);
+
+	user_node *pipe_list = shmat(shmid, NULL, 0);
+
+	for (int c = 0; c < 31; c++)
+		pipe_list[c].ID = -1;
+	
+}
+
 int main()
 {
 	init_user_info();
@@ -130,9 +141,8 @@ int main()
 
 		user->ID = index;
 		user->user_fd = clientfd;
-		user->name = malloc(10);
-		memset(user->name, 0, 10);
-		user->name = "(no name)";
+		memset(user->name, 0, 30);
+		strcpy(user->name, "(no name)");
 		user->env_num = 1;
 		bzero(user->env[0], 1024);
 		strcpy(user->env[0], "PATH");
@@ -154,9 +164,15 @@ int main()
 
 		if (pid == 0)
 		{
+			int r = 0;
 			user->pid = getpid();
 			push_user(user);
-			shell(user);
+			r = shell(user);
+			if (r == -1)
+			{
+				printf("ID: %d\n", user->ID);
+				clientID[user->ID] = 0;
+			}
 			close(clientfd);
 		}
 

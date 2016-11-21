@@ -117,24 +117,7 @@ int shell(user_node *client_fd)
 
 			else if (strncmp(current_cmd->cmd, "who", 3) == 0)
 			{
-				char *title = "<ID>\t<nickname>\t<IP/port>\t<indicate me>\n";
-				write(client_fd->user_fd, title, strlen(title));
-
-				user_node *temp_who = user_list_front;
-				while (temp_who != NULL)
-				{
-					char *content = malloc(sizeof(char) * 100);
-					memset(content, 0, 100);
-					if (temp_who == client_fd)
-						sprintf(content, "%d\t%s\t%s/%d\t%s\n", temp_who->ID, temp_who->name, temp_who->ip, temp_who->port, "<- me");
-					else
-						sprintf(content, "%d\t%s\t%s/%d\n", temp_who->ID, temp_who->name, temp_who->ip, temp_who->port);
-						
-					write(client_fd->user_fd, content, strlen(content));
-					temp_who = temp_who->next;
-					free(content);
-				}
-				
+				who(client_fd);
 				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
 
 				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
@@ -152,17 +135,7 @@ int shell(user_node *client_fd)
 					continue;
 				}
 
-				int check_name = 0;
-				user_node *search_name = user_list_front;
-				while (search_name != NULL)
-				{
-					if (strcmp(search_name->name, current_cmd->arg[1]) == 0)
-					{
-						check_name = 1;
-						break;
-					}
-					search_name = search_name->next;
-				}
+				int check_name = is_name_exist(current_cmd->arg[1]);
 
 				if (check_name)
 				{
@@ -178,18 +151,17 @@ int shell(user_node *client_fd)
 					continue;
 				}
 
-				client_fd->name = malloc(strlen(current_cmd->arg[1]) + 1);
-				memset(client_fd->name, 0, (strlen(current_cmd->arg[1]) + 1));
-				strcpy(client_fd->name, current_cmd->arg[1]);
+
+				name(client_fd, current_cmd->arg[1]);
 
 				char *bro_name = malloc(sizeof(char) * 100);
 				memset(bro_name, 0, 100);
 
-				sprintf(bro_name, "*** User from %s/%d is named '%s'. ***", client_fd->ip, client_fd->port, client_fd->name);
+				sprintf(bro_name, "*** User from %s/%d is named '%s'. ***\n", client_fd->ip, client_fd->port, current_cmd->arg[1]);
 				broadcast_message(client_fd, bro_name);
-				sign = 0;
 				free(bro_name);
 				bro_name = NULL;
+				sign = 0;
 				
 				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
 
@@ -206,24 +178,19 @@ int shell(user_node *client_fd)
 					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
 					continue;
 				}
+				
+				int ID = atoi(current_cmd->arg[1]);
 
-				int sock_fd = atoi(current_cmd->arg[1]);
-				char *tell_msg = malloc(sizeof(char) * 1024);
-				memset(tell_msg, 0, 1024);
-
-				sprintf(tell_msg, "*** (%s) told you ***: %s\n", client_fd->name, current_cmd->arg[2]);
-
-				if (write(sock_fd, tell_msg, strlen(tell_msg)) < 0)
+				if (tell(client_fd, ID, current_cmd->arg[2]) < 0)
 				{
 					char *tell_err = malloc(sizeof(char) * 100);
 					memset(tell_err, 0, 100);
-					sprintf(tell_err, "*** Error: user #(%d) does not exist yet. ***\n", sock_fd);
+					sprintf(tell_err, "*** Error: user #(%d) does not exist yet. ***\n", ID);
 
 					write(client_fd->user_fd, tell_err, strlen(tell_err));
 					free(tell_err);
 				}
 
-				free(tell_msg);
 				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
 
 				current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
@@ -241,12 +208,8 @@ int shell(user_node *client_fd)
 					continue;
 				}
 
-				char *yell_msg = malloc(sizeof(char) * 1024);
-				memset(yell_msg, 0, 1024);
+				yell(client_fd, current_cmd->arg[1]);
 
-				sprintf(yell_msg, "*** %s yelled ***: %s", client_fd->name, current_cmd->arg[1]);
-				broadcast_message(client_fd, yell_msg);
-				free(yell_msg);
 				sign = 0;
 				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
 
@@ -302,6 +265,9 @@ int shell(user_node *client_fd)
 			
 			else if (strncmp(current_cmd->cmd, "exit", 4) == 0)
 			{
+				close(client_fd->user_fd);
+				unlink_user(client_fd);
+				user_exit_broadcast(client_fd);
 				return -1;
 			}
 
@@ -351,16 +317,16 @@ int shell(user_node *client_fd)
 
 						else if (exe_ret == 2)
 						{
-							user_node *target = search_name(user_list_front, current_cmd->pip_process_count_out);
-							sprintf(search_pip, "*** %s (#%d) just piped cmd to %s (#%d) ***", client_fd->name, client_fd->ID, target->name, current_cmd->pip_process_count_out);
+							char *target = get_name(current_cmd->pip_process_count_out);
+							sprintf(search_pip, "*** %s (#%d) just piped cmd to %s (#%d) ***", client_fd->name, client_fd->ID, target, current_cmd->pip_process_count_out);
 							broadcast_message(client_fd, search_pip);
 							sign = 0;
 						}
 
 						else if (exe_ret == 1)
 						{
-							user_node *target = search_name(user_list_front, current_cmd->pip_process_count_in);
-							sprintf(search_pip, "*** %s (#%d) just received from %s (#%d) by cmd ***", client_fd->name, client_fd->ID, target->name, current_cmd->pip_process_count_in);
+							char *target = get_name(current_cmd->pip_process_count_in);
+							sprintf(search_pip, "*** %s (#%d) just received from %s (#%d) by cmd ***", client_fd->name, client_fd->ID, target, current_cmd->pip_process_count_in);
 							broadcast_message(client_fd, search_pip);
 							sign = 0;
 						}
