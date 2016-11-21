@@ -315,6 +315,30 @@ int shell(user_node *client_fd)
 							decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
 						}
 
+						else if (exe_ret == -3)
+						{
+							sprintf(search_pip, "*** Error: user #%d does not exist. ***\n", client_fd->ID, current_cmd->pip_process_count_out);
+							write(client_fd->user_fd, search_pip, strlen(search_pip));
+							decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+						}
+
+						else if (exe_ret == -4)
+						{
+							sprintf(search_pip, "*** Error: user #%d does not exist. ***\n", client_fd->ID, current_cmd->pip_process_count_in);
+							write(client_fd->user_fd, search_pip, strlen(search_pip));
+							decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
+						}
+
+						else if (exe_ret == 5)
+						{
+							char *target = get_name(current_cmd->pip_process_count_in);
+							sprintf(search_pip, "*** %s (#%d) just received from %s (#%d) by cmd ***", client_fd->name, client_fd->ID, target, current_cmd->pip_process_count_in);
+							broadcast_message(client_fd, search_pip);
+							char *target1 = get_name(current_cmd->pip_process_count_out);
+							sprintf(search_pip, "*** %s (#%d) just piped cmd to %s (#%d) ***", client_fd->name, client_fd->ID, target1, current_cmd->pip_process_count_out);
+							broadcast_message(client_fd, search_pip);
+							sign = 0;
+						}
 						else if (exe_ret == 2)
 						{
 							char *target = get_name(current_cmd->pip_process_count_out);
@@ -372,6 +396,8 @@ int execute_node(cmd_node *node, user_node *client_fd, int *next_n)
 
 	if (node->is_pipe_in)
 	{
+		if (is_id_exist(node->pip_process_count_in) == -1)
+			return -4;
 		pipe_node *search = search_pipe(node->pip_process_count_in, client_fd->ID);
 		printf("search from:%d\n", node->pip_process_count_in);
 		printf("search to:%d\n", client_fd->ID);
@@ -392,6 +418,8 @@ int execute_node(cmd_node *node, user_node *client_fd, int *next_n)
 	pipe_node *search = NULL;
 	if (node->is_pipe_out)
 	{
+		if (is_id_exist(node->pip_process_count_out) == -1)
+			return -3;
 		printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
 		search = search_pipe(client_fd->ID, node->pip_process_count_out);
 		if (search == NULL)
@@ -417,7 +445,11 @@ int execute_node(cmd_node *node, user_node *client_fd, int *next_n)
 			return -2;
 		}
 		stdoutfd = search->outfd;
-		ret_p = 2;
+		if (ret_p == 1)
+			ret_p = 5;
+
+		else
+			ret_p = 2;
 	}
 
 	if (node->type == ISPIPE)

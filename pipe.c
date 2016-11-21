@@ -130,19 +130,16 @@ void put_pipe(pipe_node *node)
 
 	for (int i = 0; i < 50; i++)
 	{
-		printf("iiiiiiiiiiiiii%d\n", temp[i].ID);
 		if (temp[i].ID == -1)
 		{
 			node->ID = i;
 			temp[i] = *node;
-			printf("iiiiiiiiiiinsert: %d\n", i);
 			printf("from:%d\n", temp[i].from);
 			printf("to:%d\n", temp[i].to);
 			break;
 		}
 	}
 	
-	printf("bbbbbbbbbbbbbbbbba\n");
 	shmdt(temp);
 }
 

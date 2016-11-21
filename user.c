@@ -105,6 +105,16 @@ int is_name_exist(char *name)
 	return ret;
 }
 
+int is_id_exist(int id)
+{
+	int ret = 0;
+	user_node *node = get_user_list();
+	if (node[id].ID == -1)
+		ret = -1;	
+	shmdt(node);
+	return ret;
+}
+
 char *get_name(int id)
 {
 	user_node *node = get_user_list();

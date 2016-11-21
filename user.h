@@ -38,6 +38,7 @@ void unlink_user(user_node *node);
 void broadcast_message(user_node *node, const char *m);
 char *get_name(int id);
 int is_name_exist(char *name);
+int is_id_exist(int id);
 void who(user_node *node);
 void name(user_node *node, char *n);
 void yell(user_node *node, char *msg);
