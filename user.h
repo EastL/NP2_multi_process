@@ -10,8 +10,8 @@ struct _user
 	int pid;
 	char name[30];
 	int user_fd;
-	char env[128][1024];
-	char envval[128][1024];
+	char env[10][1024];
+	char envval[10][1024];
 	int env_num;
 	int coda;
 

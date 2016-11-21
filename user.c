@@ -150,6 +150,7 @@ void name(user_node *node, char *n)
 
 	memset(node_list[node->ID].name, 0, 30);
 	strcpy(node_list[node->ID].name, n);
+	strcpy(node->name, n);
 
 	shmdt(node_list);
 }

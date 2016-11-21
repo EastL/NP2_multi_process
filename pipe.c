@@ -105,18 +105,23 @@ pipe_node *search_pipe(int from, int to)
 {
 	pipe_node *temp = get_global_pipe();
 	pipe_node *ret = malloc(sizeof(pipe_node));
+	int exist = 0;
 
 	for (int c = 0; c < 50; c++)
 	{
 		if (temp[c].from == from && temp[c].to == to && temp[c].ID != -1)
 		{
 			*ret = temp[c];
+			exist = 1;
 			break;
 		}
 	}
 
 	shmdt(temp);
-	return ret;
+	if (exist)
+		return ret;
+	else
+		return NULL;
 }
 
 void put_pipe(pipe_node *node)
@@ -125,13 +130,19 @@ void put_pipe(pipe_node *node)
 
 	for (int i = 0; i < 50; i++)
 	{
+		printf("iiiiiiiiiiiiii%d\n", temp[i].ID);
 		if (temp[i].ID == -1)
 		{
 			node->ID = i;
 			temp[i] = *node;
+			printf("iiiiiiiiiiinsert: %d\n", i);
+			printf("from:%d\n", temp[i].from);
+			printf("to:%d\n", temp[i].to);
 			break;
 		}
 	}
+	
+	printf("bbbbbbbbbbbbbbbbba\n");
 	shmdt(temp);
 }
 

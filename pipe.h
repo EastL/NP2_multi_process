@@ -1,6 +1,6 @@
 #ifndef __PIPE__
 #define __PIPE__
-#define PIPE_KEY 7777
+#define PIPE_KEY 8888
 
 struct __pipe
 {
@@ -11,6 +11,7 @@ struct __pipe
 	int infd;
 	int outfd;
 	int is_err;
+	char msg[4096];
 	struct __pipe *next;
 };
 

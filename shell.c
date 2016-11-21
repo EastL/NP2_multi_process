@@ -373,21 +373,27 @@ int execute_node(cmd_node *node, user_node *client_fd, int *next_n)
 	if (node->is_pipe_in)
 	{
 		pipe_node *search = search_pipe(node->pip_process_count_in, client_fd->ID);
+		printf("search from:%d\n", node->pip_process_count_in);
+		printf("search to:%d\n", client_fd->ID);
 		if (search == NULL)
 		{
 			return -1;
 		}
 
-		stdinfd = search->infd;
+		int temp_pipe[2];
+		pipe(temp_pipe);
+		write(temp_pipe[1], search->msg, 4096);
+		close(temp_pipe[1]);
+		stdinfd = temp_pipe[0];
 		delete_pipe(search);
-		close(search->outfd);
 		ret_p = 1;
 	}
 
+	pipe_node *search = NULL;
 	if (node->is_pipe_out)
 	{
 		printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
-		pipe_node *search = search_pipe(client_fd->ID, node->pip_process_count_out);
+		search = search_pipe(client_fd->ID, node->pip_process_count_out);
 		if (search == NULL)
 		{
 			search = malloc(sizeof(pipe_node));
@@ -401,7 +407,6 @@ int execute_node(cmd_node *node, user_node *client_fd, int *next_n)
 			search->infd = pipep[0];
 			search->next = NULL;
 
-			put_pipe(search);
 			printf("put node:%x\n", search);
 			printf("front:%x\n", pipe_client_front);
 		}
@@ -513,6 +518,7 @@ int execute_node(cmd_node *node, user_node *client_fd, int *next_n)
 		}
 
 		execvp(node->cmd, node->arg);
+
 	}
 
 	else
@@ -534,6 +540,15 @@ int execute_node(cmd_node *node, user_node *client_fd, int *next_n)
 
 		int t;
 		waitpid(pid, &t, 0);
+		//pipe to shm
+		if (node->is_pipe_out)
+		{
+			close(search->outfd);
+			memset(search->msg, 0, 4096);
+			read(search->infd, search->msg, 4096);
+			put_pipe(search);
+		}
+
 	}
 	printf("ret_p:%d\n", ret_p);
 	return ret_p;

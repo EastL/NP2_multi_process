@@ -13,6 +13,7 @@
 #include <netdb.h>
 #include "shell.h"
 #include "user.h"
+#include "pipe.h"
 
 
 //user info
@@ -76,22 +77,29 @@ void init_user_info()
 
 	for (int c = 0; c < 31; c++)
 		user_list[c].ID = -1;
+	shmdt(user_list);
 }
 
 void init_global_pipe()
 {
-	int shmid = shmget((key_t)PIPE_KEY, sizeof(user_node) * 50, IPC_CREAT | 0600);
+	int shmid = shmget((key_t)PIPE_KEY, sizeof(user_node) * 31, IPC_CREAT | 0600);
+	if (shmid < 0)
+	{
+		perror("shm err: \n");
+		printf("shmid : %d\n", shmid);
+	}
 
 	user_node *pipe_list = shmat(shmid, NULL, 0);
 
 	for (int c = 0; c < 31; c++)
 		pipe_list[c].ID = -1;
-	
+	shmdt(pipe_list);
 }
 
 int main()
 {
 	init_user_info();
+	init_global_pipe();
 
 	//kill zombie
 	signal(SIGCHLD, wait4_child);
