@@ -4,7 +4,9 @@
 #include <sys/shm.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include "user.h"
+#include "message.h"
 
 user_node *get_user_list()
 {
@@ -13,11 +15,32 @@ user_node *get_user_list()
 	return ret;
 }
 
+int get_client_coda(int id)
+{
+	user_node *user_list = get_user_list();
+
+	int ret = user_list[id].coda;
+	
+	shmdt(user_list);
+	return ret;
+}
+
+void set_client_coda(int id, int coda)
+{
+	user_node *user_list = get_user_list();
+
+	user_list[id].coda = coda;
+	
+	shmdt(user_list);
+}
+
 void push_user(user_node *node)
 {
 	user_node *user_list = get_user_list();
 
 	user_list[node->ID] = *node;
+	printf("shm pid:%d\n", user_list[node->ID].pid);
+	printf("node pid:%d\n", node->pid);
 	shmdt(user_list);
 }
 
@@ -43,12 +66,20 @@ void unlink_user(user_node *node)
 	shmdt(user_list);
 }
 
-void broadcast_message(const char *m)
+void broadcast_message(user_node *node, const char *m)
 {
 	user_node *user_list = get_user_list();
 
+	for (int i = 1; i < 31; i++)
+	{
+		if (user_list[i].ID != -1)
+		{
+			send_message(node->ID, i, m);
+			printf("pid:%d\n", user_list[i].pid);
+			kill(user_list[i].pid, SIGUSR1);
+		}
+	}
 	
-
 	shmdt(user_list);
 }
 

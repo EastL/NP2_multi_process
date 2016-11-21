@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -141,18 +142,20 @@ int main()
 		user->user_pipe_rear = NULL;
 		user->user_cmd_front = NULL;
 		user->user_cmd_rear = NULL;
+		user->coda = 0;
 		bzero(user->ip, 21);
 		strcpy(user->ip, adr);
 		user->port = ntohs(client_socket.sin_port);
 			
 		user->next = NULL;
 		
-		push_user(user);
 
 		int pid = fork();
 
 		if (pid == 0)
 		{
+			user->pid = getpid();
+			push_user(user);
 			shell(user);
 			close(clientfd);
 		}

@@ -7,12 +7,14 @@
 #include <sys/fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include "shell.h"
 #include "command.h"
 #include "parse.h"
 #include "util.h"
 #include "pipe.h"
 #include "user.h"
+#include "message.h"
 
 //user info
 extern user_node *user_list_front;
@@ -22,8 +24,22 @@ extern user_node *user_list_rear;
 pipe_node *pipe_client_front = NULL;
 pipe_node *pipe_client_rear = NULL;
 
+int cid;
+int cfd;
+
+void recv_msg()
+{
+	msg_node recv = recv_message(-1, cid);
+	write(cfd, recv.msg, strlen(recv.msg));
+	write(cfd, "\n% ", 3);
+}
+
 int shell(user_node *client_fd)
 {
+	cid = client_fd->ID;
+	cfd = client_fd->user_fd;
+	signal(SIGUSR1, recv_msg);
+
 	char *welcome = "****************************************\n** Welcome to the information server. **\n****************************************\n";
 	char *shellsign = "% ";
 	ssize_t bufsize = 0;
@@ -39,7 +55,8 @@ int shell(user_node *client_fd)
 	memset(bro_msg, 0, 80);
 
 	sprintf(bro_msg, "*** User '(no name)' entered from %s/%d. ***", client_fd->ip, client_fd->port);
-	//broadcast_message(user_list_front, bro_msg);
+	broadcast_message(client_fd, bro_msg);
+	printf("broadcast msg: %s\n", bro_msg);
 
 	//set env
 	for (int c = 0; c < client_fd->env_num; c++)
@@ -169,7 +186,7 @@ int shell(user_node *client_fd)
 				memset(bro_name, 0, 100);
 
 				sprintf(bro_name, "*** User from %s/%d is named '%s'. ***", client_fd->ip, client_fd->port, client_fd->name);
-				broadcast_message(user_list_front, bro_name);
+				broadcast_message(client_fd, bro_name);
 				sign = 0;
 				free(bro_name);
 				bro_name = NULL;
@@ -228,7 +245,7 @@ int shell(user_node *client_fd)
 				memset(yell_msg, 0, 1024);
 
 				sprintf(yell_msg, "*** %s yelled ***: %s", client_fd->name, current_cmd->arg[1]);
-				broadcast_message(user_list_front, yell_msg);
+				broadcast_message(client_fd, yell_msg);
 				free(yell_msg);
 				sign = 0;
 				decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
@@ -336,7 +353,7 @@ int shell(user_node *client_fd)
 						{
 							user_node *target = search_name(user_list_front, current_cmd->pip_process_count_out);
 							sprintf(search_pip, "*** %s (#%d) just piped cmd to %s (#%d) ***", client_fd->name, client_fd->ID, target->name, current_cmd->pip_process_count_out);
-							broadcast_message(user_list_front, search_pip);
+							broadcast_message(client_fd, search_pip);
 							sign = 0;
 						}
 
@@ -344,7 +361,7 @@ int shell(user_node *client_fd)
 						{
 							user_node *target = search_name(user_list_front, current_cmd->pip_process_count_in);
 							sprintf(search_pip, "*** %s (#%d) just received from %s (#%d) by cmd ***", client_fd->name, client_fd->ID, target->name, current_cmd->pip_process_count_in);
-							broadcast_message(user_list_front, search_pip);
+							broadcast_message(client_fd, search_pip);
 							sign = 0;
 						}
 						
