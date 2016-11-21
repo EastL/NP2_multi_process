@@ -49,7 +49,7 @@ void parse(user_node *sfd)
 				node->cmd = malloc(strlen(current_node->token) + 1);
 				memset(node->cmd, 0, strlen(current_node->token) + 1);
 				strcpy(node->cmd, current_node->token);
-				node->arg = malloc(sizeof(char*) * 5);
+				node->arg = malloc(sizeof(char*) * 20);
 				node->arg[0] = node->cmd;
 				node->arg[1] = NULL;
 				node->arg[2] = NULL;

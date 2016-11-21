@@ -5,9 +5,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/fcntl.h>
-#include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <signal.h>
+#include <string.h>
 #include "shell.h"
 #include "command.h"
 #include "parse.h"
@@ -178,10 +179,29 @@ int shell(user_node *client_fd)
 					current_cmd = pull_cmd(&(client_fd->user_cmd_front), &(client_fd->user_cmd_rear));
 					continue;
 				}
+
+				int merge_tell = current_cmd->arg_count;
+				char *marg = malloc(512);
+				memset(marg, 0, 512);
+				int merge_count;
+
+				strncpy(marg, current_cmd->arg[2], strlen(current_cmd->arg[2]));
+				if (merge_tell > 3)
+				{
+					for (merge_count = 3; merge_count < merge_tell; merge_count++)
+					{
+						printf("arggg : %s\n", current_cmd->arg[merge_count]);
+						//sprintf(marg, "%s %s", marg, current_cmd->arg[merge_count]);
+						strcat(marg, " ");
+						strcat(marg, current_cmd->arg[merge_count]);
+					}
+				}
+
+				printf("arg: %s\n", marg);
 				
 				int ID = atoi(current_cmd->arg[1]);
 
-				if (tell(client_fd, ID, current_cmd->arg[2]) < 0)
+				if (tell(client_fd, ID, marg) < 0)
 				{
 					char *tell_err = malloc(sizeof(char) * 100);
 					memset(tell_err, 0, 100);
