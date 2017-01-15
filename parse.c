@@ -128,6 +128,7 @@ void parse(user_node *sfd)
 		{
 			if (next_type == NEWLINE)
 				node->is_new = 1;
+			strcpy(node->buf, current_node->buf);
 			node->is_pipe_out = 1;
 			node->pip_process_count_out = atoi(current_node->token + 1);
 			push_cmd(&(sfd->user_cmd_front), &(sfd->user_cmd_rear), &node);
@@ -135,6 +136,7 @@ void parse(user_node *sfd)
 
 		else if (type == PIPEPIN)
 		{
+			strcpy(node->buf, current_node->buf);
 			if (next_type == NEWLINE)
 			{
 				node->is_new = 1;

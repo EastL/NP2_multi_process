@@ -180,6 +180,7 @@ int shell(user_node *client_fd)
 					continue;
 				}
 
+				/*
 				int merge_tell = current_cmd->arg_count;
 				char *marg = malloc(512);
 				memset(marg, 0, 512);
@@ -198,10 +199,11 @@ int shell(user_node *client_fd)
 				}
 
 				printf("arg: %s\n", marg);
-				
+				*/				
+
 				int ID = atoi(current_cmd->arg[1]);
 
-				if (tell(client_fd, ID, marg) < 0)
+				if (tell(client_fd, ID, current_cmd->arg[2]) < 0)
 				{
 					char *tell_err = malloc(sizeof(char) * 100);
 					memset(tell_err, 0, 100);
@@ -285,9 +287,9 @@ int shell(user_node *client_fd)
 			
 			else if (strncmp(current_cmd->cmd, "exit", 4) == 0)
 			{
+				user_exit_broadcast(client_fd);
 				close(client_fd->user_fd);
 				unlink_user(client_fd);
-				user_exit_broadcast(client_fd);
 				return -1;
 			}
 
@@ -337,14 +339,14 @@ int shell(user_node *client_fd)
 
 						else if (exe_ret == -3)
 						{
-							sprintf(search_pip, "*** Error: user #%d does not exist. ***\n", client_fd->ID, current_cmd->pip_process_count_out);
+							sprintf(search_pip, "*** Error: user #%d does not exist. ***\n", current_cmd->pip_process_count_out);
 							write(client_fd->user_fd, search_pip, strlen(search_pip));
 							decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
 						}
 
 						else if (exe_ret == -4)
 						{
-							sprintf(search_pip, "*** Error: user #%d does not exist. ***\n", client_fd->ID, current_cmd->pip_process_count_in);
+							sprintf(search_pip, "*** Error: user #%d does not exist. ***\n", current_cmd->pip_process_count_in);
 							write(client_fd->user_fd, search_pip, strlen(search_pip));
 							decress_count(&(client_fd->user_pipe_front), &(client_fd->user_pipe_rear));
 						}
@@ -362,7 +364,7 @@ int shell(user_node *client_fd)
 						else if (exe_ret == 2)
 						{
 							char *target = get_name(current_cmd->pip_process_count_out);
-							sprintf(search_pip, "*** %s (#%d) just piped cmd to %s (#%d) ***", client_fd->name, client_fd->ID, target, current_cmd->pip_process_count_out);
+							sprintf(search_pip, "*** %s (#%d) just piped '%s' to %s (#%d) ***", client_fd->name, client_fd->ID, current_cmd->buf, target, current_cmd->pip_process_count_out);
 							broadcast_message(client_fd, search_pip);
 							sign = 0;
 						}
@@ -370,7 +372,7 @@ int shell(user_node *client_fd)
 						else if (exe_ret == 1)
 						{
 							char *target = get_name(current_cmd->pip_process_count_in);
-							sprintf(search_pip, "*** %s (#%d) just received from %s (#%d) by cmd ***", client_fd->name, client_fd->ID, target, current_cmd->pip_process_count_in);
+							sprintf(search_pip, "*** %s (#%d) just received from %s (#%d) by '%s' ***", client_fd->name, client_fd->ID, target, current_cmd->pip_process_count_in, current_cmd->buf);
 							broadcast_message(client_fd, search_pip);
 							sign = 0;
 						}
@@ -454,6 +456,7 @@ int execute_node(cmd_node *node, user_node *client_fd, int *next_n)
 			search->outfd = pipep[1];
 			search->infd = pipep[0];
 			search->next = NULL;
+			put_pipe(search);
 
 			printf("put node:%x\n", search);
 			printf("front:%x\n", pipe_client_front);

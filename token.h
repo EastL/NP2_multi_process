@@ -14,6 +14,7 @@ struct __token
 {
 	int token_type;
 	char *token;
+	char buf[512];
 	struct __token *next;	
 };
 typedef struct __token token_node; 

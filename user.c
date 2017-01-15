@@ -142,7 +142,7 @@ void who(user_node *node)
 			memset(content, 0, 100);
 
 			if (i == node->ID)
-				sprintf(content, "%d\t%s\t%s/%d\t%s\n", node_list[i].ID, node_list[i].name, node_list[i].ip, node_list[i].port, "<- me");
+				sprintf(content, "%d\t%s\t%s/%d\t%s\n", node_list[i].ID, node_list[i].name, node_list[i].ip, node_list[i].port, "<-me");
 			else
 				sprintf(content, "%d\t%s\t%s/%d\n", node_list[i].ID, node_list[i].name, node_list[i].ip, node_list[i].port);
 						

@@ -130,6 +130,7 @@ void put_pipe(pipe_node *node)
 
 	for (int i = 0; i < 50; i++)
 	{
+		printf("%d\n", temp[i].ID);
 		if (temp[i].ID == -1)
 		{
 			node->ID = i;

@@ -106,7 +106,7 @@ int main()
 
 	//create my socket
 	char port_service[10];
-	sprintf(port_service, "%d", 13421);
+	sprintf(port_service, "%d", 3425);
 
 	int my_fd = passivesock(port_service, "tcp", 5);
 
@@ -162,8 +162,11 @@ int main()
 		user->user_cmd_rear = NULL;
 		user->coda = 0;
 		bzero(user->ip, 21);
-		strcpy(user->ip, adr);
-		user->port = ntohs(client_socket.sin_port);
+		//strcpy(user->ip, adr);
+		char myip[20] = "CGILAB";
+		strcpy(user->ip, myip);
+		//user->port = ntohs(client_socket.sin_port);
+		user->port = 511;
 			
 		user->next = NULL;
 		

@@ -20,6 +20,7 @@ struct __cmd
 	int is_new;
 	int is_pipe_out;
 	int is_pipe_in;
+	char buf[512];
 	struct __cmd *next;
 };
 
